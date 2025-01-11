@@ -160,27 +160,28 @@ class GeneticAlgorithm:
                 duration = self.module_profile[module]['duration'][0] if self.module_profile[module]['type'] == 'inhouse' else self.module_profile[module]['duration'][individual[module][1] - 1]
                 completion_time = start_period + duration - individual[module][2]
                 max_period = max(max_period, completion_time)
-                launch_period = max_period + 1
+        product_completion_period = max_period + 1
 
+        for module in product:
             if product[module] == 1:  # check if the module is required for the product
                 start_period = individual[module][0]
                 duration = self.module_profile[module]['duration'][0] if self.module_profile[module]['type'] == 'inhouse' else self.module_profile[module]['duration'][individual[module][1] - 1]
                 completion_time = start_period + duration - individual[module][2]
-                                
-                # add base cost for all periods and crashing cost 
+                
+                # add base cost for all periods and crashing cost
                 if self.module_profile[module]['type'] == 'inhouse':
                     module_cal_cost = self.module_profile[module]['cost'] + self.module_profile[module]['crash cost'][0] * (individual[module][2] ** 2)
                 else:
-                    module_cal_cost = self.module_profile[module]['cost'][individual[module][1] - 1] + self.module_profile[module]['crash cost'][individual[module][1] - 1] * individual[module][2]
+                    module_cal_cost = self.module_profile[module]['cost'][individual[module][1] - 1] + self.module_profile[module]['crash cost'][individual[module][1] - 1] * (individual[module][2] ** 2)
                 
-                product_cost_fv_at_launch += module_cal_cost * (1+interest_rate)**(max(0, (launch_period - completion_time-(1))))
+                product_cost_fv_at_launch += module_cal_cost * (1+interest_rate)**(product_completion_period - completion_time - 1)
 
         # calculate present value of revenue and future value of the cost 
-        product_cost_fv = product_cost_fv_at_launch * (1+interest_rate)**(max(0, (product['ILT'] - max_period-(1))))      
+        product_cost_fv = product_cost_fv_at_launch * (1+interest_rate)**(max(0, (product['ILT'] - product_completion_period)))      
         
-        product_rev_pv = product['product_rev']*(1-((1+interest_rate)**-(156-max(launch_period, product['ILT']))))*(1+interest_rate)/(interest_rate)
+        product_rev_pv = product['product_rev']*(1-((1+interest_rate)**-(156-max(product_completion_period, product['ILT']))))*(1+interest_rate)/(interest_rate)
                
-        return product_rev_pv-product_cost_fv, max(launch_period, product['ILT'])
+        return product_rev_pv-product_cost_fv, max(product_completion_period, product['ILT'])
 
     def select_parents(self, population, fitness_scores):
         # select parents based on their fitness probabilities
